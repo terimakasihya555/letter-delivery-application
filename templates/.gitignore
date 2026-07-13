@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment and secrets
+.env
+*.env
+
+# Database dan data lokal
+*.db
+*.sqlite
+*.sqlite3
+
+# Build PyInstaller
+build/
+dist/
+*.spec
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.log
+*.tmp
+
+# Excel hasil export
+exports/
+output/
+
+# Windows
+Thumbs.db
+Desktop.ini
