@@ -1,144 +1,304 @@
 from io import BytesIO
+from itertools import count
+from xml.sax.saxutils import escape
 
 from docx import Document
-from docx.shared import Cm, Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.enum.section import WD_SECTION_START
-
-from services.helpers import set_font
-
-
-def set_paragraph_spacing(paragraph, before=0, after=0, line_spacing=1.0):
-    paragraph.paragraph_format.space_before = Pt(before)
-    paragraph.paragraph_format.space_after = Pt(after)
-    paragraph.paragraph_format.line_spacing = line_spacing
+from docx.oxml import parse_xml
+from docx.shared import Mm
 
 
-def add_blank_paragraph(doc, height_pt=12):
-    p = doc.add_paragraph()
-    set_paragraph_spacing(p, before=0, after=height_pt, line_spacing=1.0)
-    r = p.add_run("")
-    r.font.size = Pt(1)
-    return p
+# =========================================================
+# KONFIGURASI UKURAN AMPLOP
+# =========================================================
+
+ENVELOPE_WIDTH_MM = 280
+ENVELOPE_HEIGHT_MM = 110
+
+# Posisi nomor surat
+NOMOR_LEFT_MM = 70
+NOMOR_BASELINE_FROM_BOTTOM_MM = 50
+
+# Posisi alamat
+ALAMAT_LEFT_MM = 100
+ALAMAT_BASELINE_FROM_BOTTOM_MM = 40
+
+# Font
+FONT_NAME = "Times New Roman"
+FONT_SIZE_PT = 11
+
+# Jarak antarbaris alamat
+LINE_SPACING_PT = 13
+
+# Digunakan agar setiap textbox mempunyai ID berbeda
+_TEXTBOX_COUNTER = count(1)
+
+
+def mm_to_pt(mm_value):
+    """
+    Mengubah ukuran milimeter menjadi point.
+    """
+    return float(mm_value) * 72 / 25.4
+
+
+def normalize_line(value):
+    """
+    Membersihkan spasi berlebih dalam satu baris.
+    """
+    if value is None:
+        return ""
+
+    return " ".join(str(value).split())
 
 
 def split_alamat(alamat):
     """
-    Memecah alamat dari database menjadi beberapa baris.
-    Baris pertama biasanya berisi:
-    SDR. KETUA PENGADILAN ...
+    Membersihkan alamat dari database.
+
+    Fungsi ini:
+    - menyeragamkan jenis Enter;
+    - menghapus baris kosong;
+    - menghapus spasi berlebih;
+    - mempertahankan urutan baris alamat.
     """
-    lines = []
+    if alamat is None:
+        return []
 
-    for line in str(alamat).splitlines():
-        clean = line.strip()
-        if clean:
-            lines.append(clean)
+    text = str(alamat)
+    text = text.replace("\r\n", "\n")
+    text = text.replace("\r", "\n")
 
-    return lines
+    result = []
+
+    for line in text.split("\n"):
+        clean_line = normalize_line(line)
+
+        if clean_line:
+            result.append(clean_line)
+
+    return result
 
 
-def add_envelope_page(doc, nomor_surat, alamat, is_first_page=False):
+def configure_envelope_section(section):
     """
-    Membuat 1 halaman print amplop.
-
-    Amplop sudah memiliki desain tercetak, sehingga file Word ini hanya
-    menempatkan:
-    1. Nomor surat pada area NOMOR
-    2. Alamat tujuan pada area kanan amplop
+    Mengatur halaman Word menjadi ukuran amplop 280 × 110 mm.
+    Margin dibuat nol agar posisi dihitung dari sisi kertas.
     """
-    if not is_first_page:
-        doc.add_section(WD_SECTION_START.NEW_PAGE)
+    section.page_width = Mm(ENVELOPE_WIDTH_MM)
+    section.page_height = Mm(ENVELOPE_HEIGHT_MM)
 
-    section = doc.sections[-1]
+    section.top_margin = Mm(0)
+    section.bottom_margin = Mm(0)
+    section.left_margin = Mm(0)
+    section.right_margin = Mm(0)
 
-    # Ukuran dibuat landscape mengikuti area amplop pada hasil scan.
-    # Jika posisi print masih sedikit meleset, angka margin/spacing di bawah bisa disesuaikan.
-    section.page_width = Cm(29.7)
-    section.page_height = Cm(21.0)
+    section.header_distance = Mm(0)
+    section.footer_distance = Mm(0)
 
-    section.top_margin = Cm(0.7)
-    section.bottom_margin = Cm(0.5)
-    section.left_margin = Cm(1.0)
-    section.right_margin = Cm(1.0)
 
-    # =========================
-    # POSISI NOMOR SURAT
-    # =========================
-    # Jarak atas untuk turun ke area tulisan "NOMOR"
-    add_blank_paragraph(doc, height_pt=96)
+def add_absolute_textbox(
+    paragraph,
+    left_mm,
+    baseline_from_bottom_mm,
+    lines,
+    width_mm,
+    height_mm,
+    font_size_pt=11,
+    bold=True,
+    line_spacing_pt=13,
+):
+    """
+    Menambahkan textbox Word dengan posisi absolut.
 
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_paragraph_spacing(p, before=0, after=0, line_spacing=1.0)
+    left_mm:
+        Jarak awal tulisan dari sisi kiri kertas.
 
-    # Indent ini menggeser nomor surat ke area titik-titik setelah "NOMOR :"
-    p.paragraph_format.left_indent = Cm(3.05)
+    baseline_from_bottom_mm:
+        Jarak baseline baris pertama dari sisi bawah kertas.
 
-    r = p.add_run(nomor_surat)
-    set_font(r, size=11, bold=False)
+    lines:
+        Daftar baris yang akan dicetak.
 
-    # =========================
-    # POSISI ALAMAT TUJUAN
-    # =========================
-    # Jarak dari nomor surat ke kotak alamat kanan.
-    add_blank_paragraph(doc, height_pt=2)
+    width_mm dan height_mm:
+        Ukuran textbox.
+    """
+    if not lines:
+        lines = [""]
+
+    shape_id = next(_TEXTBOX_COUNTER)
+
+    # Perkiraan jarak antara bagian atas kotak teks dan baseline huruf.
+    # Nilai ini digunakan agar posisi baseline mendekati ukuran fisik.
+    baseline_offset_mm = font_size_pt * 0.29
+
+    top_mm = (
+        ENVELOPE_HEIGHT_MM
+        - baseline_from_bottom_mm
+        - baseline_offset_mm
+    )
+
+    left_pt = mm_to_pt(left_mm)
+    top_pt = mm_to_pt(top_mm)
+    width_pt = mm_to_pt(width_mm)
+    height_pt = mm_to_pt(height_mm)
+
+    paragraph_xml = []
+
+    for line in lines:
+        safe_text = escape(normalize_line(line))
+        bold_xml = "<w:b/>" if bold else ""
+
+        paragraph_xml.append(
+            f"""
+            <w:p>
+                <w:pPr>
+                    <w:spacing
+                        w:before="0"
+                        w:after="0"
+                        w:line="{int(line_spacing_pt * 20)}"
+                        w:lineRule="exact"
+                    />
+                </w:pPr>
+
+                <w:r>
+                    <w:rPr>
+                        <w:rFonts
+                            w:ascii="{FONT_NAME}"
+                            w:hAnsi="{FONT_NAME}"
+                            w:eastAsia="{FONT_NAME}"
+                        />
+                        {bold_xml}
+                        <w:sz w:val="{int(font_size_pt * 2)}"/>
+                        <w:szCs w:val="{int(font_size_pt * 2)}"/>
+                    </w:rPr>
+
+                    <w:t xml:space="preserve">{safe_text}</w:t>
+                </w:r>
+            </w:p>
+            """
+        )
+
+    textbox_xml = f"""
+    <w:r
+        xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        xmlns:v="urn:schemas-microsoft-com:vml"
+    >
+        <w:pict>
+            <v:rect
+                id="EnvelopeTextBox{shape_id}"
+                style="
+                    position:absolute;
+                    margin-left:{left_pt:.2f}pt;
+                    margin-top:{top_pt:.2f}pt;
+                    width:{width_pt:.2f}pt;
+                    height:{height_pt:.2f}pt;
+                    z-index:1;
+                    mso-position-horizontal-relative:page;
+                    mso-position-vertical-relative:page;
+                    mso-wrap-style:none;
+                "
+                stroked="f"
+                filled="f"
+            >
+                <v:textbox inset="0,0,0,0">
+                    <w:txbxContent>
+                        {''.join(paragraph_xml)}
+                    </w:txbxContent>
+                </v:textbox>
+            </v:rect>
+        </w:pict>
+    </w:r>
+    """
+
+    paragraph._p.append(parse_xml(textbox_xml))
+
+
+def add_envelope_page(
+    doc,
+    nomor_surat,
+    alamat,
+    is_first_page=False,
+):
+    """
+    Membuat satu halaman amplop.
+
+    Nomor surat:
+    - mulai 70 mm dari kiri;
+    - baseline 50 mm dari bawah;
+    - bold.
+
+    Alamat:
+    - 'Kepada Yth.' mulai 100 mm dari kiri;
+    - baseline 40 mm dari bawah;
+    - alamat berikutnya berada di bawahnya;
+    - bold.
+    """
+    if is_first_page:
+        section = doc.sections[0]
+    else:
+        section = doc.add_section(WD_SECTION_START.NEW_PAGE)
+
+    configure_envelope_section(section)
+
+    canvas = doc.add_paragraph()
+    canvas.paragraph_format.space_before = 0
+    canvas.paragraph_format.space_after = 0
+    canvas.paragraph_format.line_spacing = 1
+
+    clean_nomor = normalize_line(nomor_surat)
+
+    # =====================================================
+    # NOMOR SURAT
+    # =====================================================
+
+    add_absolute_textbox(
+        paragraph=canvas,
+        left_mm=NOMOR_LEFT_MM,
+        baseline_from_bottom_mm=NOMOR_BASELINE_FROM_BOTTOM_MM,
+        lines=[clean_nomor],
+        width_mm=105,
+        height_mm=10,
+        font_size_pt=FONT_SIZE_PT,
+        bold=True,
+        line_spacing_pt=LINE_SPACING_PT,
+    )
+
+    # =====================================================
+    # ALAMAT PENERIMA
+    # =====================================================
 
     alamat_lines = split_alamat(alamat)
 
-    if not alamat_lines:
-        alamat_lines = [""]
+    full_address_lines = ["Kepada Yth."] + alamat_lines
 
-    first_line = alamat_lines[0]
-    next_lines = alamat_lines[1:]
-
-    # Baris pertama:
-    # "Kepada Yth." lebih kiri,
-    # kemudian tab ke posisi "SDR...."
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_paragraph_spacing(p, before=0, after=0, line_spacing=1.0)
-
-    # Posisi awal blok alamat kanan
-    p.paragraph_format.left_indent = Cm(8.0)
-
-    # Posisi tab untuk awal nama/alamat tujuan setelah "Kepada Yth."
-    tab_position = Cm(3.1)
-    p.paragraph_format.tab_stops.add_tab_stop(tab_position, WD_TAB_ALIGNMENT.LEFT)
-
-    r = p.add_run("Kepada Yth.")
-    set_font(r, size=11, bold=False)
-
-    r = p.add_run("\t" + first_line)
-    set_font(r, size=11, bold=False)
-
-    # Baris berikutnya:
-    # dibuat sejajar dengan awal "SDR...."
-    for line in next_lines:
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        set_paragraph_spacing(p, before=0, after=0, line_spacing=1.0)
-
-        # 8.0 + 3.1 = sejajar dengan teks setelah tab pada baris pertama
-        p.paragraph_format.left_indent = Cm(11.1)
-
-        r = p.add_run(line)
-        set_font(r, size=11, bold=False)
+    add_absolute_textbox(
+        paragraph=canvas,
+        left_mm=ALAMAT_LEFT_MM,
+        baseline_from_bottom_mm=ALAMAT_BASELINE_FROM_BOTTOM_MM,
+        lines=full_address_lines,
+        width_mm=170,
+        height_mm=38,
+        font_size_pt=FONT_SIZE_PT,
+        bold=True,
+        line_spacing_pt=LINE_SPACING_PT,
+    )
 
 
 def build_amplop(data, kop_surat_path=None):
     """
-    Membuat dokumen amplop berdasarkan surat yang dipilih dari database.
+    Membuat dokumen amplop berdasarkan surat yang dipilih.
 
-    Catatan:
-    - kop_surat_path tidak dipakai lagi karena amplop fisik sudah memiliki kop/desain cetak.
-    - setiap surat terpilih akan menjadi 1 halaman.
+    Amplop fisik sudah memiliki kop dan desain tercetak.
+    Dokumen Word hanya mencetak nomor surat dan alamat penerima.
     """
     doc = Document()
 
+    # Mengatur section awal sebelum membuat halaman.
+    configure_envelope_section(doc.sections[0])
+
     rows_data = data.get("selected_surat", [])
 
-    for idx, row in enumerate(rows_data):
+    for index, row in enumerate(rows_data):
         nomor_surat = row.get("nomor_referensi", "")
         alamat = row.get("alamat", "")
 
@@ -146,11 +306,11 @@ def build_amplop(data, kop_surat_path=None):
             doc=doc,
             nomor_surat=nomor_surat,
             alamat=alamat,
-            is_first_page=(idx == 0)
+            is_first_page=(index == 0),
         )
 
-    bio = BytesIO()
-    doc.save(bio)
-    bio.seek(0)
+    output = BytesIO()
+    doc.save(output)
+    output.seek(0)
 
-    return bio
+    return output
