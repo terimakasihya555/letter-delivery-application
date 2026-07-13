@@ -1,99 +1,477 @@
 <!doctype html>
 <html lang="id">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if mode == 'edit' %}Edit{% else %}Tambah{% endif %} Rekap Surat</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        {% if mode == 'edit' %}
+            Edit
+        {% else %}
+            Tambah
+        {% endif %}
+        Rekap Surat
+    </title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 </head>
 
 <body class="bg-light">
 
 <div class="container py-4">
-  <div class="row justify-content-center">
-    <div class="col-lg-9">
 
-      <div class="card shadow-sm">
-        <div class="card-body">
+    <div class="row justify-content-center">
 
-          <h3 class="mb-3">
-            {% if mode == 'edit' %}
-              Edit Rekap Surat
-            {% else %}
-              Tambah Rekap Surat
-            {% endif %}
-          </h3>
+        <div class="col-lg-9">
 
-          <form method="post">
-            <div class="row g-3">
+            <div class="card shadow-sm">
 
-              <div class="col-md-6">
-                <label class="form-label">Bulan</label>
-                <input name="bulan" class="form-control" required
-                       value="{{ surat['bulan'] if surat else '' }}"
-                       placeholder="Contoh: Juni">
-              </div>
+                <div class="card-body">
 
-              <div class="col-md-6">
-                <label class="form-label">Tahun</label>
-                <input name="tahun" class="form-control" required
-                       value="{{ surat['tahun'] if surat else '' }}"
-                       placeholder="Contoh: 2026">
-              </div>
+                    <h3 class="mb-3">
 
-              <div class="col-md-4">
-                <label class="form-label">No.</label>
-                <input name="nomor_urut" type="number" class="form-control" required
-                       value="{{ surat['nomor_urut'] if surat else '' }}">
-              </div>
+                        {% if mode == 'edit' %}
+                            Edit Rekap Surat
+                        {% else %}
+                            Tambah Rekap Surat
+                        {% endif %}
 
-              <div class="col-md-8">
-                <label class="form-label">Nomor Referensi</label>
-                <input name="nomor_referensi" class="form-control" required
-                       value="{{ surat['nomor_referensi'] if surat else '' }}"
-                       placeholder="Contoh: 777/PAN/ROG/HK1.3/VI/2026">
-              </div>
+                    </h3>
 
-              <div class="col-md-4">
-                <label class="form-label">Kode Surat</label>
-                <input name="kode_surat" class="form-control"
-                       value="{{ surat['kode_surat'] if surat else '' }}"
-                       placeholder="Contoh: 1.3">
-              </div>
+                    <form method="post">
 
-              <div class="col-md-8">
-                <label class="form-label">Klasifikasi</label>
-                <input name="klasifikasi" class="form-control"
-                       value="{{ surat['klasifikasi'] if surat else '' }}"
-                       placeholder="Contoh: Nota Kesepahaman">
-              </div>
+                        <div class="row g-3">
 
-              <div class="col-12">
-                <label class="form-label">Alamat / Ditujukan Kepada</label>
-                <textarea name="alamat" class="form-control" rows="6" required
-                          placeholder="SDR. KETUA PENGADILAN NEGERI BANJARMASIN&#10;JALAN D.I PANJAITAN NOMOR 27, ANTASAN BESAR,&#10;KOTA BANJARMASIN">{{ surat['alamat'] if surat else '' }}</textarea>
-              </div>
+                            <!-- BULAN -->
+
+                            <div class="col-md-6">
+
+                                <label class="form-label">
+                                    Bulan
+                                </label>
+
+                                <input
+                                    name="bulan"
+                                    class="form-control"
+                                    required
+                                    value="{{ surat['bulan'] if surat else '' }}"
+                                    placeholder="Contoh: Juli"
+                                >
+
+                            </div>
+
+
+                            <!-- TAHUN -->
+
+                            <div class="col-md-6">
+
+                                <label class="form-label">
+                                    Tahun
+                                </label>
+
+                                <input
+                                    name="tahun"
+                                    type="number"
+                                    class="form-control"
+                                    required
+                                    value="{{ surat['tahun'] if surat else '' }}"
+                                    placeholder="Contoh: 2026"
+                                >
+
+                            </div>
+
+
+                            <!-- NOMOR URUT -->
+
+                            <div class="col-md-4">
+
+                                <label class="form-label">
+                                    No.
+                                </label>
+
+                                <input
+                                    name="nomor_urut"
+                                    type="number"
+                                    class="form-control"
+                                    required
+                                    value="{{ surat['nomor_urut'] if surat else '' }}"
+                                >
+
+                            </div>
+
+
+                            <!-- NOMOR REFERENSI -->
+
+                            <div class="col-md-8">
+
+                                <label class="form-label">
+                                    Nomor Referensi
+                                </label>
+
+                                <input
+                                    name="nomor_referensi"
+                                    class="form-control"
+                                    required
+                                    value="{{ surat['nomor_referensi'] if surat else '' }}"
+                                    placeholder="Contoh: 777/PAN/ROG/HK1.3/VII/2026"
+                                >
+
+                            </div>
+
+
+                            <!-- KODE SURAT -->
+
+                            <div class="col-md-4">
+
+                                <label class="form-label">
+                                    Kode Surat
+                                </label>
+
+                                <select
+                                    name="kode_surat"
+                                    id="kode_surat"
+                                    class="form-select"
+                                    required
+                                >
+
+                                    <option value="">
+                                        -- Pilih Kode Surat --
+                                    </option>
+
+                                    <option
+                                        value="HK1"
+                                        data-klasifikasi="Peraturan Perundang-Undangan"
+                                    >
+                                        HK1
+                                    </option>
+
+                                    <option
+                                        value="HK1.1"
+                                        data-klasifikasi="Peraturan Perundang-Undangan Eksternal"
+                                    >
+                                        HK1.1
+                                    </option>
+
+                                    <option
+                                        value="HK1.2"
+                                        data-klasifikasi="Peraturan Perundang-Undangan / Kebijakan Internal"
+                                    >
+                                        HK1.2
+                                    </option>
+
+                                    <option
+                                        value="HK1.3"
+                                        data-klasifikasi="Surat Perjanjian / Nota Kesepahaman"
+                                    >
+                                        HK1.3
+                                    </option>
+
+                                    <option
+                                        value="HK2"
+                                        data-klasifikasi="Penyelesaian Perkara"
+                                    >
+                                        HK2
+                                    </option>
+
+                                    <option
+                                        value="HK2.1"
+                                        data-klasifikasi="Pidana Umum"
+                                    >
+                                        HK2.1
+                                    </option>
+
+                                    <option
+                                        value="HK2.2"
+                                        data-klasifikasi="Pidana Khusus"
+                                    >
+                                        HK2.2
+                                    </option>
+
+                                    <option
+                                        value="HK2.3"
+                                        data-klasifikasi="Pidana Militer"
+                                    >
+                                        HK2.3
+                                    </option>
+
+                                    <option
+                                        value="HK2.4"
+                                        data-klasifikasi="Perdata Umum"
+                                    >
+                                        HK2.4
+                                    </option>
+
+                                    <option
+                                        value="HK2.5"
+                                        data-klasifikasi="Perdata Niaga"
+                                    >
+                                        HK2.5
+                                    </option>
+
+                                    <option
+                                        value="HK2.6"
+                                        data-klasifikasi="Perdata Agama"
+                                    >
+                                        HK2.6
+                                    </option>
+
+                                    <option
+                                        value="HK2.7"
+                                        data-klasifikasi="Tata Usaha Negara"
+                                    >
+                                        HK2.7
+                                    </option>
+
+                                    <option
+                                        value="Lainnya"
+                                        data-klasifikasi=""
+                                    >
+                                        Lainnya
+                                    </option>
+
+                                </select>
+
+                                <div class="form-text">
+                                    Pilih kode untuk mengisi klasifikasi secara otomatis.
+                                </div>
+
+                            </div>
+
+
+                            <!-- KLASIFIKASI -->
+
+                            <div class="col-md-8">
+
+                                <label class="form-label">
+                                    Klasifikasi
+                                </label>
+
+                                <input
+                                    name="klasifikasi"
+                                    id="klasifikasi"
+                                    class="form-control"
+                                    required
+                                    value="{{ surat['klasifikasi'] if surat else '' }}"
+                                    placeholder="Klasifikasi akan terisi otomatis"
+                                    readonly
+                                >
+
+                                <div
+                                    id="klasifikasi_help"
+                                    class="form-text"
+                                >
+                                    Kolom ini mengikuti kode surat yang dipilih.
+                                </div>
+
+                            </div>
+
+
+                            <!-- ALAMAT -->
+
+                            <div class="col-12">
+
+                                <label class="form-label">
+                                    Alamat / Ditujukan Kepada
+                                </label>
+
+                                <textarea
+                                    name="alamat"
+                                    class="form-control"
+                                    rows="6"
+                                    required
+                                    placeholder="SDR. KETUA PENGADILAN NEGERI BANJARMASIN&#10;JALAN D.I. PANJAITAN NOMOR 27, ANTASAN BESAR,&#10;KOTA BANJARMASIN"
+                                >{{ surat['alamat'] if surat else '' }}</textarea>
+
+                                <div class="form-text">
+                                    Gunakan satu Enter untuk berpindah ke baris alamat berikutnya.
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- TOMBOL -->
+
+                        <div class="mt-4 d-flex gap-2">
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
+                                Simpan
+                            </button>
+
+                            <a
+                                href="/rekap"
+                                class="btn btn-secondary"
+                            >
+                                Kembali
+                            </a>
+
+                        </div>
+
+                    </form>
+
+                </div>
 
             </div>
-
-            <div class="mt-4 d-flex gap-2">
-              <button type="submit" class="btn btn-primary">
-                Simpan
-              </button>
-
-              <a href="/rekap" class="btn btn-secondary">
-                Kembali
-              </a>
-            </div>
-
-          </form>
 
         </div>
-      </div>
 
     </div>
-  </div>
+
 </div>
 
+
+<script>
+    const kodeSuratSelect =
+        document.getElementById("kode_surat");
+
+    const klasifikasiInput =
+        document.getElementById("klasifikasi");
+
+    const klasifikasiHelp =
+        document.getElementById("klasifikasi_help");
+
+    /*
+     * Nilai lama diperlukan ketika membuka halaman Edit.
+     */
+    const kodeLama =
+        {{ (surat['kode_surat'] if surat else '') | tojson }};
+
+    const klasifikasiLama =
+        {{ (surat['klasifikasi'] if surat else '') | tojson }};
+
+
+    function updateKlasifikasi() {
+        const selectedOption =
+            kodeSuratSelect.options[kodeSuratSelect.selectedIndex];
+
+        const kode = selectedOption.value;
+
+        const klasifikasiOtomatis =
+            selectedOption.dataset.klasifikasi || "";
+
+        if (kode === "Lainnya") {
+            /*
+             * Pengguna dapat mengetik klasifikasi sendiri.
+             */
+            klasifikasiInput.readOnly = false;
+
+            klasifikasiInput.placeholder =
+                "Tuliskan klasifikasi surat";
+
+            klasifikasiHelp.textContent =
+                "Silakan tulis klasifikasi surat secara manual.";
+
+            /*
+             * Jangan hapus isi lama ketika sedang mengedit.
+             */
+            if (
+                kodeLama !== "Lainnya" ||
+                klasifikasiInput.value === klasifikasiOtomatis
+            ) {
+                klasifikasiInput.value = "";
+            }
+
+            klasifikasiInput.focus();
+
+        } else if (kode) {
+            /*
+             * Klasifikasi otomatis berdasarkan kode.
+             */
+            klasifikasiInput.readOnly = true;
+            klasifikasiInput.value = klasifikasiOtomatis;
+
+            klasifikasiInput.placeholder =
+                "Klasifikasi terisi otomatis";
+
+            klasifikasiHelp.textContent =
+                "Klasifikasi mengikuti kode surat yang dipilih.";
+
+        } else {
+            /*
+             * Belum ada kode yang dipilih.
+             */
+            klasifikasiInput.readOnly = true;
+            klasifikasiInput.value = "";
+
+            klasifikasiInput.placeholder =
+                "Pilih kode surat terlebih dahulu";
+
+            klasifikasiHelp.textContent =
+                "Pilih kode surat untuk mengisi klasifikasi.";
+        }
+    }
+
+
+    function loadExistingValue() {
+        if (!kodeLama) {
+            updateKlasifikasi();
+            return;
+        }
+
+        /*
+         * Cari kode lama di dalam pilihan dropdown.
+         */
+        const matchingOption = Array
+            .from(kodeSuratSelect.options)
+            .find(function (option) {
+                return option.value === kodeLama;
+            });
+
+        if (matchingOption) {
+            kodeSuratSelect.value = kodeLama;
+
+            if (kodeLama === "Lainnya") {
+                klasifikasiInput.readOnly = false;
+                klasifikasiInput.value = klasifikasiLama;
+
+                klasifikasiInput.placeholder =
+                    "Tuliskan klasifikasi surat";
+
+                klasifikasiHelp.textContent =
+                    "Silakan tulis klasifikasi surat secara manual.";
+
+            } else {
+                updateKlasifikasi();
+            }
+
+        } else {
+            /*
+             * Untuk data lama yang kodenya belum tersedia
+             * di daftar, tampilkan sebagai Lainnya.
+             */
+            kodeSuratSelect.value = "Lainnya";
+            klasifikasiInput.readOnly = false;
+            klasifikasiInput.value = klasifikasiLama;
+
+            klasifikasiInput.placeholder =
+                "Tuliskan klasifikasi surat";
+
+            klasifikasiHelp.textContent =
+                "Kode lama tidak terdapat dalam daftar. Klasifikasi dapat diubah manual.";
+        }
+    }
+
+
+    kodeSuratSelect.addEventListener(
+        "change",
+        updateKlasifikasi
+    );
+
+    loadExistingValue();
+</script>
+
 </body>
+
 </html>
